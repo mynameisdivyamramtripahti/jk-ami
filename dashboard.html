@@ -1,0 +1,156 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        database.ref("orders").on("value", function(snapshot) {
+          let ordersContainer = document.getElementById("ordersList");
+          ordersContainer.innerHTML = "";
+      
+          snapshot.forEach(function(childSnapshot) {
+            let order = childSnapshot.val();
+            let orderElement = document.createElement("div");
+            orderElement.innerHTML = `
+              <div class="order">
+                <p><strong>Receiver:</strong> ${order.receiver}</p>
+                <p><strong>Address:</strong> ${order.address}</p>
+                <p><strong>Contact:</strong> ${order.contact}</p>
+                <p><strong>Payment:</strong> ${order.payment}</p>
+                <p><strong>Total:</strong> ₹${order.total}</p>
+                <p><strong>Status:</strong> ${order.status}</p>
+              </div>
+              <hr>
+            `;
+            ordersContainer.appendChild(orderElement);
+          });
+        });
+      </script>
+      
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-analytics.js";
+        // TODO: Add SDKs for Firebase products that you want to use
+        // https://firebase.google.com/docs/web/setup#available-libraries
+      
+        // Your web app's Firebase configuration
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        const firebaseConfig = {
+          apiKey: "AIzaSyA-_2I2vTiLUw44ozKxYYHIhOP4RFpiVmI",
+          authDomain: "yookstore-72469.firebaseapp.com",
+          databaseURL: "https://yookstore-72469-default-rtdb.asia-southeast1.firebasedatabase.app",
+          projectId: "yookstore-72469",
+          storageBucket: "yookstore-72469.firebasestorage.app",
+          messagingSenderId: "568428801690",
+          appId: "1:568428801690:web:bfcf4c1cee2a5cd9cbb923",
+          measurementId: "G-6202QTH0TL"
+        };
+      
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+      </script>
+</head>
+<body class="bg-gray-100 p-6">
+
+    <h1 class="text-3xl font-bold mb-4">Admin Dashboard</h1>
+
+    <table class="w-full bg-white shadow-lg rounded-lg">
+        <thead>
+            <tr class="bg-blue-500 text-white">
+                <th class="p-3">User</th>
+                <th class="p-3">Email</th>
+                <th class="p-3">Address</th>
+                <th class="p-3">Orders</th>
+                <th class="p-3">Total Price</th>
+                <th class="p-3">Status</th>
+                <th class="p-3">Action</th>
+            </tr>
+        </thead>
+        <tbody id="orders-table">
+            <!-- Orders will be loaded here dynamically -->
+        </tbody>
+    </table>
+
+    <button onclick="exportToCSV()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 mt-4 rounded">
+        Export Orders (CSV)
+    </button>
+
+    <script>
+        function loadOrders() {
+            let orders = JSON.parse(localStorage.getItem("orders")) || [];
+            let table = document.getElementById("orders-table");
+
+            table.innerHTML = "";
+
+            orders.forEach((order, index) => {
+                let row = document.createElement("tr");
+                row.classList.add("border-b");
+
+                row.innerHTML = `
+                    <td class="p-3">${order.user}</td>
+                    <td class="p-3">${order.email}</td>
+                    <td class="p-3">${order.address}</td>
+                    <td class="p-3">${order.items.map(item => item.name).join(", ")}</td>
+                    <td class="p-3 font-bold">$${order.total}</td>
+                    <td class="p-3">
+                        <select class="status-dropdown p-2 border rounded" data-index="${index}">
+                            <option value="Pending" ${order.status === "Pending" ? "selected" : ""}>Pending</option>
+                            <option value="Shipped" ${order.status === "Shipped" ? "selected" : ""}>Shipped</option>
+                            <option value="Delivered" ${order.status === "Delivered" ? "selected" : ""}>Delivered</option>
+                            <option value="Cancelled" ${order.status === "Cancelled" ? "selected" : ""}>Cancelled</option>
+                        </select>
+                    </td>
+                    <td class="p-3">
+                        <button onclick="deleteOrder(${index})" class="bg-red-500 text-white px-3 py-1 rounded">❌</button>
+                    </td>
+                `;
+
+                table.appendChild(row);
+            });
+
+            document.querySelectorAll(".status-dropdown").forEach(select => {
+                select.addEventListener("change", function() {
+                    let index = this.getAttribute("data-index");
+                    updateOrderStatus(index, this.value);
+                });
+            });
+        }
+
+        function updateOrderStatus(index, status) {
+            let orders = JSON.parse(localStorage.getItem("orders")) || [];
+            orders[index].status = status;
+            localStorage.setItem("orders", JSON.stringify(orders));
+            loadOrders();
+        }
+
+        function deleteOrder(index) {
+            let orders = JSON.parse(localStorage.getItem("orders")) || [];
+            orders.splice(index, 1);
+            localStorage.setItem("orders", JSON.stringify(orders));
+            loadOrders();
+        }
+
+        function exportToCSV() {
+            let orders = JSON.parse(localStorage.getItem("orders")) || [];
+            let csvContent = "User,Email,Address,Orders,Total Price,Status\n";
+
+            orders.forEach(order => {
+                let orderItems = order.items.map(item => item.name).join(" | ");
+                csvContent += `"${order.user}","${order.email}","${order.address}","${orderItems}",${order.total},"${order.status}"\n`;
+            });
+
+            let blob = new Blob([csvContent], { type: "text/csv" });
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "orders.csv";
+            link.click();
+        }
+
+        document.addEventListener("DOMContentLoaded", loadOrders);
+    </script>
+<script src="cart.js"></script>
+</body>
+</html>
